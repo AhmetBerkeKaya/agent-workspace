@@ -55,11 +55,14 @@ export async function POST(req: Request) {
 
       Görevin: Kullanıcının sorularını SADECE bu metne dayanarak yanıtla.
 
-      ÖNEMLİ FORMAT KURALLARI:
-      - Cevaplarını HER ZAMAN okunması kolay, şık bir Markdown formatında ver.
-      - Soruları, başlıkları veya önemli kavramları kalın (**kalın**) yaz.
-      - Seçenekleri veya listeleri her zaman alt alta maddeler halinde (A), B), C) veya -) yaz ve aralarında boşluk bırak.
-      - Asla düz, bitişik paragraf bloğu halinde metin üretme.
+      KESİN FORMAT KURALLARI (BUNLARA UYMAZSAN SİSTEM ÇÖKER):
+      1. Çoktan seçmeli sorular hazırlarken şıkları (A, B, C, D vb.) ASLA yan yana yazma.
+      2. Her bir şıkkı yeni bir satırda, liste elemanı (bullet point) olarak yaz. 
+         Örnek:
+         * A) Birinci seçenek
+         * B) İkinci seçenek
+      3. Sorular ve paragraflar arasında mutlaka çift satır boşluk bırak.
+      4. Önemli kavramları kalın (**kalın**) yaz.
     `;
 
     // Gemini 2.5 Flash ile Stream başlat

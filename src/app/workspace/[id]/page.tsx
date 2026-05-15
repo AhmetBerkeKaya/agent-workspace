@@ -8,20 +8,25 @@ import { useState, useEffect, useRef } from "react";
 import { DrivePicker } from "@/components/ui/DrivePicker";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useRouter } from "next/navigation";
 
 export default function WorkspacePage() {
   const { id } = useParams();
   const scrollRef = useRef<HTMLDivElement>(null);
-  
+
   const [sources, setSources] = useState<any[]>([]);
   const [loadingSources, setLoadingSources] = useState(true);
-  
+
   // Mobil yan menü kontrol state'i
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  const [messages, setMessages] = useState<{ role: string, content: string }[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const router = useRouter();
+  const inputRef = useRef<HTMLTextAreaElement>(null); // Klavye odaklanması için
+  const [workspaceName, setWorkspaceName] = useState("Sohbet");
 
   const fetchSources = async () => {
     try {
@@ -34,6 +39,41 @@ export default function WorkspacePage() {
       setLoadingSources(false);
     }
   };
+
+  // KLAVYE KISAYOLLARI (Keyboard First)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // CMD/CTRL + K : Mesaj kutusuna odaklan
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+      // CMD/CTRL + SHIFT + N : Ana sayfaya dön (Yeni Proje)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        router.push("/");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [router]);
+
+  // OTOMATİK İSİMLENDİRME TETİKLEYİCİSİ
+  // Sohbet 2 mesaja ulaştığında (1 kullanıcı, 1 bot) sadece bir kez çalışır
+  useEffect(() => {
+    if (messages.length === 2 && messages[0].role === "user" && workspaceName === "Sohbet") {
+      fetch(`/api/workspaces/${id}/auto-title`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstMessage: messages[0].content }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.name) setWorkspaceName(data.name);
+        })
+        .catch(console.error);
+    }
+  }, [messages.length, id, workspaceName]);
 
   useEffect(() => {
     fetchSources();
@@ -65,7 +105,7 @@ export default function WorkspacePage() {
 
     const userMsg = input;
     setInput("");
-    
+
     const newMessages = [...messages, { role: "user", content: userMsg }];
     setMessages([...newMessages, { role: "assistant", content: "" }]);
     setIsLoading(true);
@@ -90,7 +130,7 @@ export default function WorkspacePage() {
         if (value) {
           const chunk = decoder.decode(value, { stream: true });
           botResponse += chunk;
-          
+
           setMessages(prev => {
             const updated = [...prev];
             updated[updated.length - 1].content = botResponse;
@@ -113,11 +153,11 @@ export default function WorkspacePage() {
   return (
     // relative eklendi ki mobil menü ekranın üstüne binebilsin
     <div className="flex h-[calc(100vh-64px)] relative overflow-hidden bg-white dark:bg-[#0a0a0a]">
-      
+
       {/* Mobil Karartma (Overlay) */}
       <AnimatePresence>
         {isSidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -134,15 +174,15 @@ export default function WorkspacePage() {
           <div className="flex items-center gap-2">
             <DrivePicker onFileSelect={handleFileSelect} />
             {/* Mobilde Menüyü Kapatma Butonu */}
-            <button 
-              onClick={() => setIsSidebarOpen(false)} 
+            <button
+              onClick={() => setIsSidebarOpen(false)}
               className="md:hidden p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
             >
               <X size={18} />
             </button>
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loadingSources ? (
             <div className="flex items-center justify-center h-20 text-zinc-400">
@@ -182,12 +222,12 @@ export default function WorkspacePage() {
       {/* SAĞ PANEL: Chat Arayüzü */}
       {/* min-w-0 çok kritik: Flexbox içindeki çocukların ekran dışına taşmasını engeller */}
       <main className="flex-1 flex flex-col bg-white dark:bg-transparent relative min-w-0">
-        
+
         {/* Üst Bar */}
         <div className="h-14 border-b border-zinc-200 dark:border-white/10 flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md absolute top-0 left-0 right-0 z-10">
           <div className="flex items-center gap-3">
             {/* Mobil Menü Açma Butonu */}
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-1 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
             >
@@ -195,7 +235,8 @@ export default function WorkspacePage() {
             </button>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 truncate">Gemini 2.5 Flash Çevrimiçi</span>
+              <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{workspaceName}</span>
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500 hidden md:inline">• Gemini 2.5 Flash</span>
             </div>
           </div>
           <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors shrink-0">
@@ -207,7 +248,7 @@ export default function WorkspacePage() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 pt-20 md:pt-24 pb-36 md:pb-32 space-y-6 md:space-y-8 scroll-smooth w-full">
           <AnimatePresence>
             {messages.length === 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center justify-center h-full text-zinc-400 gap-4 mt-10 px-4 text-center"
@@ -218,7 +259,7 @@ export default function WorkspacePage() {
                 <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Sohbete başlamak için bir şeyler yazın</p>
               </motion.div>
             )}
-            
+
             {messages.map((msg, idx) => (
               <motion.div
                 key={idx}
@@ -228,21 +269,19 @@ export default function WorkspacePage() {
                 className={`flex gap-3 md:gap-4 w-full max-w-4xl mx-auto ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
               >
                 {/* Avatar */}
-                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${
-                  msg.role === "user" 
-                    ? "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-300" 
-                    : "bg-indigo-600 text-white"
-                }`}>
+                <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${msg.role === "user"
+                  ? "bg-zinc-200 dark:bg-white/10 text-zinc-600 dark:text-zinc-300"
+                  : "bg-indigo-600 text-white"
+                  }`}>
                   {msg.role === "user" ? <User size={14} /> : <Bot size={16} />}
                 </div>
 
                 {/* Mesaj Balonu: min-w-0 taşmaları önler */}
                 <div className={`flex-1 min-w-0 ${msg.role === "user" ? "max-w-2xl" : "max-w-full"}`}>
-                  <div className={`p-4 md:p-5 rounded-2xl ${
-                    msg.role === "user" 
-                      ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 rounded-tr-sm inline-block w-auto float-right" 
-                      : "bg-transparent text-zinc-800 dark:text-zinc-200"
-                  }`}>
+                  <div className={`p-4 md:p-5 rounded-2xl ${msg.role === "user"
+                    ? "bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-zinc-100 rounded-tr-sm inline-block w-auto float-right"
+                    : "bg-transparent text-zinc-800 dark:text-zinc-200"
+                    }`}>
                     {msg.role === "assistant" && msg.content === "" ? (
                       <div className="flex items-center gap-2 text-indigo-500 dark:text-indigo-400">
                         <Loader2 size={16} className="animate-spin" />
@@ -253,26 +292,26 @@ export default function WorkspacePage() {
                     ) : (
                       // break-words prose alanında çok kritiktir
                       <div className="text-[14px] md:text-[15px] leading-relaxed break-words prose prose-zinc dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:p-0 prose-pre:bg-transparent">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({node, ...props}) => <p className="mb-4 last:mb-0 text-zinc-700 dark:text-zinc-300" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2 text-zinc-700 dark:text-zinc-300" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-zinc-700 dark:text-zinc-300" {...props} />,
-                            li: ({node, ...props}) => <li className="pl-1" {...props} />,
-                            h1: ({node, ...props}) => <h1 className="text-xl md:text-2xl font-bold mb-4 mt-8 text-zinc-900 dark:text-white" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-lg md:text-xl font-bold mb-3 mt-6 text-zinc-900 dark:text-white" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-md md:text-lg font-semibold mb-2 mt-5 text-zinc-900 dark:text-white" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold text-zinc-900 dark:text-white" {...props} />,
-                            
-                            code: ({node, className, children, ...props}: any) => {
+                            p: ({ node, ...props }) => <p className="mb-4 last:mb-0 text-zinc-700 dark:text-zinc-300" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2 text-zinc-700 dark:text-zinc-300" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2 text-zinc-700 dark:text-zinc-300" {...props} />,
+                            li: ({node, ...props}) => <li className="pl-1 whitespace-pre-wrap leading-relaxed" {...props} />,
+                            h1: ({ node, ...props }) => <h1 className="text-xl md:text-2xl font-bold mb-4 mt-8 text-zinc-900 dark:text-white" {...props} />,
+                            h2: ({ node, ...props }) => <h2 className="text-lg md:text-xl font-bold mb-3 mt-6 text-zinc-900 dark:text-white" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-md md:text-lg font-semibold mb-2 mt-5 text-zinc-900 dark:text-white" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="font-semibold text-zinc-900 dark:text-white" {...props} />,
+
+                            code: ({ node, className, children, ...props }: any) => {
                               const match = /language-(\w+)/.exec(className || '');
                               if (match) return <code className={className} {...props}>{children}</code>;
                               return <code className="bg-zinc-100 dark:bg-white/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md text-[12px] md:text-[13px] font-mono break-all" {...props}>{children}</code>;
                             },
-                            
+
                             // Kod bloğunun dışarı taşmasını max-w-full ve overflow-x-auto engeller
-                            pre: ({node, ...props}) => (
+                            pre: ({ node, ...props }) => (
                               <div className="relative my-4 md:my-6 rounded-xl overflow-hidden bg-[#0d1117] border border-zinc-200/20 dark:border-white/10 shadow-2xl max-w-full">
                                 <div className="flex items-center px-4 py-2.5 md:py-3 bg-white/5 border-b border-white/5">
                                   <div className="flex gap-1.5 md:gap-2">
@@ -303,6 +342,7 @@ export default function WorkspacePage() {
           <form onSubmit={customSubmit} className="max-w-4xl mx-auto relative group w-full">
             <div className="relative rounded-xl md:rounded-2xl shadow-xl border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl overflow-hidden transition-all focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500">
               <textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -315,7 +355,7 @@ export default function WorkspacePage() {
                 // Mobilde min-h ve text boyutları optimize edildi
                 className="w-full bg-transparent p-4 md:p-5 pr-14 md:pr-16 outline-none resize-none min-h-[60px] md:min-h-[88px] max-h-[120px] md:max-h-[200px] text-[14px] md:text-[15px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500"
               />
-              <button 
+              <button
                 type="submit"
                 className="absolute bottom-2 md:bottom-4 right-2 md:right-4 p-2 md:p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg md:rounded-xl transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 flex items-center justify-center shadow-lg"
                 disabled={!input.trim() || isLoading}
