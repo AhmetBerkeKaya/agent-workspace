@@ -70,8 +70,11 @@ model Source {
   name        String
   type        String
   contentUrl  String?
-  notebookId  String?
-  createdAt   DateTime  @default(now())
+  googleId    String?   // <-- İŞTE BU SATIRI EKLEDİK (? işareti zorunlu olmadığını belirtir)
+  
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

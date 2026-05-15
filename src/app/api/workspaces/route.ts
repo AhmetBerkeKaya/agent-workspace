@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// Tüm Workspace'leri listele
 export async function GET() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) return new NextResponse("Yetkisiz", { status: 401 });
 
   const workspaces = await prisma.workspace.findMany({
@@ -15,19 +15,32 @@ export async function GET() {
   return NextResponse.json(workspaces);
 }
 
-// Yeni Workspace oluştur
 export async function POST(req: Request) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.email) return new NextResponse("Yetkisiz", { status: 401 });
 
   const { name } = await req.json();
 
-  const workspace = await prisma.workspace.create({
-    data: {
-      name,
-      user: { connect: { email: session.user.email } },
-    },
-  });
+  try {
+    const workspace = await prisma.workspace.create({
+      data: {
+        name,
+        user: {
+          // Eğer kullanıcı varsa bağlan (connect), yoksa önce yarat (create)
+          connectOrCreate: {
+            where: { email: session.user.email },
+            create: {
+              email: session.user.email,
+              name: session.user.name || "Ahmet Berke",
+            }
+          }
+        },
+      },
+    });
 
-  return NextResponse.json(workspace);
+    return NextResponse.json(workspace);
+  } catch (error) {
+    console.error("Workspace oluşturma hatası:", error);
+    return new NextResponse("Veritabanı hatası", { status: 500 });
+  }
 }

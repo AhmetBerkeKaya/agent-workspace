@@ -4,12 +4,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> } // params artık bir Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession();
   if (!session?.user?.email) return new NextResponse("Yetkisiz", { status: 401 });
 
-  // params'ı bekleyerek (await) çözüyoruz
   const { id } = await params;
   const { fileId, fileName, fileUrl, mimeType } = await req.json();
 
@@ -19,7 +18,7 @@ export async function POST(
         name: fileName,
         type: mimeType,
         contentUrl: fileUrl,
-        // Workspace ile ilişkiyi güvenli şekilde kuruyoruz
+        googleId: fileId, // <-- İŞTE EKSİK OLAN KAHRAMAN SATIR BURASI
         workspace: { connect: { id: id } }
       },
     });
@@ -33,7 +32,7 @@ export async function POST(
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> } // params burada da Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

@@ -1,11 +1,7 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
 
-const handler = NextAuth({
-  // Adaptörü ekleyerek NextAuth'un Prisma üzerinden DB ile konuşmasını sağlıyoruz
-  adapter: PrismaAdapter(prisma),
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -20,33 +16,23 @@ const handler = NextAuth({
       },
     }),
   ],
-  // Adaptör kullanıldığında session stratejisini "jwt" olarak belirtmek önemlidir
-  session: {
-    strategy: "jwt",
-  },
   callbacks: {
-    async jwt({ token, account, user }) {
-      // İlk girişte account ve user nesneleri dolu gelir
+    async jwt({ token, account }) {
+      // Google'dan gelen erişim token'ını JWT içine hapsediyoruz
       if (account) {
         token.accessToken = account.access_token;
-      }
-      if (user) {
-        token.id = user.id;
       }
       return token;
     },
     async session({ session, token }: any) {
-      // Session nesnesine hem accessToken'ı hem de kullanıcı ID'sini ekliyoruz
-      if (session.user) {
-        session.user.id = token.id;
-      }
+      // Session nesnesine accessToken'ı ekliyoruz
       session.accessToken = token.accessToken;
       return session;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-  // Debug modunu aktif ederek olası veritabanı hatalarını terminalde görebiliriz
-  debug: process.env.NODE_ENV === "development",
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
