@@ -54,6 +54,12 @@ export async function POST(req: Request) {
       --- DOSYA İÇERİĞİ BİTİŞİ ---
 
       Görevin: Kullanıcının sorularını SADECE bu metne dayanarak yanıtla.
+
+      ÖNEMLİ FORMAT KURALLARI:
+      - Cevaplarını HER ZAMAN okunması kolay, şık bir Markdown formatında ver.
+      - Soruları, başlıkları veya önemli kavramları kalın (**kalın**) yaz.
+      - Seçenekleri veya listeleri her zaman alt alta maddeler halinde (A), B), C) veya -) yaz ve aralarında boşluk bırak.
+      - Asla düz, bitişik paragraf bloğu halinde metin üretme.
     `;
 
     // Gemini 2.5 Flash ile Stream başlat
