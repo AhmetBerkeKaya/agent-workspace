@@ -60,19 +60,27 @@ export default function WorkspacePage() {
 
   // OTOMATİK İSİMLENDİRME TETİKLEYİCİSİ
   // Sohbet 2 mesaja ulaştığında (1 kullanıcı, 1 bot) sadece bir kez çalışır
+  // useEffect(() => {
+  //   if (messages.length === 2 && messages[0].role === "user" && workspaceName === "Sohbet") {
+  //     fetch(`/api/workspaces/${id}/auto-title`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ firstMessage: messages[0].content }),
+  //     })
+  //       .then((res) => res.json())
+  //       .then((data) => {
+  //         if (data.name) setWorkspaceName(data.name);
+  //       })
+  //       .catch(console.error);
+  //   }
+  // }, [messages.length, id, workspaceName]);
+  // OTOMATİK İSİMLENDİRME TETİKLEYİCİSİ
   useEffect(() => {
+    /* KOTA DOLMAMASI İÇİN GEÇİCİ OLARAK KAPATILDI
     if (messages.length === 2 && messages[0].role === "user" && workspaceName === "Sohbet") {
-      fetch(`/api/workspaces/${id}/auto-title`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstMessage: messages[0].content }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.name) setWorkspaceName(data.name);
-        })
-        .catch(console.error);
+      fetch(`/api/workspaces/${id}/auto-title`, ...
     }
+    */
   }, [messages.length, id, workspaceName]);
 
   useEffect(() => {
@@ -145,8 +153,18 @@ export default function WorkspacePage() {
         updated[updated.length - 1].content = "Üzgünüm, bir bağlantı hatası oluştu.";
         return updated;
       });
+    // customSubmit fonksiyonunun en altındaki finally bloğunu bul ve şununla değiştir:
     } finally {
       setIsLoading(false);
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        // Eğer işlem bittiği halde ajan metin üretmediyse arayüzü takılı bırakma:
+        if (lastMsg.role === "assistant" && lastMsg.content === "") {
+          lastMsg.content = "Ajan bilgiyi MCP üzerinden analiz etti ancak metne dökemedi. Lütfen soruyu farklı bir şekilde sorun.";
+        }
+        return updated;
+      });
     }
   };
 

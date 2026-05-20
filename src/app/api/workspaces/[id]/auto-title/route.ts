@@ -7,10 +7,8 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
 });
 
-// DİKKAT: params artık bir Promise olarak tanımlanıyor
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // NEXT.JS KRİTİK DÜZELTME: params'ı await ile çözüyoruz
     const { id } = await params;
     const { firstMessage } = await req.json();
 
@@ -18,16 +16,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return new NextResponse("Mesaj gerekli", { status: 400 });
     }
 
-    // Kesinlikle sadece Gemini 2.5 Flash kullanıyoruz!
-    const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
-      system: "Sen bir başlık üreticisisin. Kullanıcının ilk mesajını okuyup bu sohbete en fazla 3-4 kelimelik çok kısa, öz ve profesyonel bir başlık ver. Sadece başlığı yaz, tırnak işareti veya nokta kullanma.",
-      prompt: firstMessage,
-    });
+    // Gemini API çağrısını (generateText) KOTAYI YEMEMESİ İÇİN ŞİMDİLİK İPTAL ETTİK.
+    // Bunun yerine ilk mesajın ilk 20 karakterini başlık yapıyoruz.
+    const newTitle = firstMessage.substring(0, 20) + "...";
 
-    const newTitle = text.trim();
-
-    // Çözdüğümüz 'id' değişkenini kullanarak veritabanını güncelliyoruz
     const updatedWorkspace = await prisma.workspace.update({
       where: { id: id },
       data: { name: newTitle }
